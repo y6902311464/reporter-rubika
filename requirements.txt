@@ -1,4 +1,5 @@
-aiogram==3.31.0
+aiogram
 rubpy
 pycryptodome
 aiohttp
+flask
