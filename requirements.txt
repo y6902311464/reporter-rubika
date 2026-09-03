@@ -1,5 +1,1 @@
-aiogram
-rubpy
-pycryptodome
-aiohttp
-flask
+bale
