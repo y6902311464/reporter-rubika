@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 coding by amirwebcode : telegram = @saeqehe
 pip install aiogram rubpy pycryptodome flask
@@ -766,7 +766,7 @@ def kb_main(lang: str, premium: bool) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=t(lang, "help"), callback_data="help", style=ButtonStyle.PRIMARY),
         ],
         [
-            InlineKeyboardButton(text=t(lang, "web_app"), url="http://localhost:5000", style=ButtonStyle.SUCCESS),
+            InlineKeyboardButton(text=t(lang, "web_app"), url="https://reporter-rubika-production.up.railway.app", style=ButtonStyle.SUCCESS),
             InlineKeyboardButton(text=t(lang, "support"), callback_data="support", style=ButtonStyle.DANGER),
         ],
     ])
@@ -2024,7 +2024,9 @@ async def cmd_reply(message: Message) -> None:
 # ────────────────────────────────────────────────────────────────────────
 #  Global error handler
 # ────────────────────────────────────────────────────────────────────────
-async def global_error_handler(update: Update, exception: Exception) -> bool:
+async def global_error_handler(update: Update, exception: Exception = None) -> bool:
+    if exception is None:
+        return True
     logger.exception("UNHANDLED EXCEPTION: %s", exception)
     try:
         if update.callback_query:
@@ -2245,7 +2247,7 @@ table{width:100%;border-collapse:collapse}th{text-align:left;padding:10px 14px;c
 <header class="fi"><h1>Rubika Reporter</h1><p>Dashboard & Management Panel</p></header>
 <div class="sg fi" id="sg"></div>
 <div class="qa fi">
-<a href="https://t.me/YourBotUsername" target="_blank"><div class="ic">🤖</div><div class="lb">Open Bot</div></a>
+<a href="https://t.me/reporterrubikaammbot" target="_blank"><div class="ic">🤖</div><div class="lb">Open Bot</div></a>
 <div class="qac" onclick="loadAll()"><div class="ic">🔄</div><div class="lb">Refresh</div></div>
 <div class="qac" onclick="exportCSV()"><div class="ic">📥</div><div class="lb">Export CSV</div></div>
 </div>
@@ -2297,9 +2299,9 @@ loadAll();setInterval(loadAll,30000);
 def start_web_app() -> None:
     try:
         flask_app = _create_flask_app()
-        thread = threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=5000, debug=False), daemon=True)
+        thread = threading.Thread(target=lambda: flask_app.run(host="0.0.0.0", port=6080, debug=False), daemon=True)
         thread.start()
-        logger.info("🌐 Web app started on http://localhost:5000")
+        logger.info("🌐 Web app started on https://reporter-rubika-production.up.railway.app")
     except Exception as exc:
         logger.error("Failed to start web app: %s", exc)
 
