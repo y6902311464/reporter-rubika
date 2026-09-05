@@ -2854,7 +2854,7 @@ class TelegramAuthBot(AdminPanelMixin):
                 CommandHandler('cancel', self.cancel),
             ],
             allow_reentry=True,
-            per_message=True,
+            per_message=False,
         )
         
         self.application.add_handler(conv_handler)
