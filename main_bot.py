@@ -18,7 +18,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
-from telegram.error import RetryAfter, TelegramError
+from telegram.error import RetryAfter, TelegramError, Conflict
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 import asyncio
@@ -2854,7 +2854,7 @@ class TelegramAuthBot(AdminPanelMixin):
                 CommandHandler('cancel', self.cancel),
             ],
             allow_reentry=True,
-            per_message=False,
+            per_message=True,
         )
         
         self.application.add_handler(conv_handler)
@@ -2869,6 +2869,13 @@ class TelegramAuthBot(AdminPanelMixin):
         error = context.error
         if error is None:
             logging.error("Telegram update handler failed without an exception.")
+            return
+
+        if isinstance(error, Conflict):
+            logging.warning(
+                "Conflict: another bot instance is polling updates. "
+                "Make sure only one instance uses this token."
+            )
             return
 
         logging.error(
@@ -6930,9 +6937,8 @@ class TelegramAuthBot(AdminPanelMixin):
         try:
             await processing_message.edit_text("✅ کد ورود ارسال شد.")
         except Exception:
-            logging.warning(
-                "Could not edit verification progress message",
-                exc_info=True,
+            logging.debug(
+                "Could not edit verification progress message (expected during DC migration)",
             )
 
         return await source_message.reply_text(
