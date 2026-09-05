@@ -10499,12 +10499,6 @@ class TelegramAuthBot(AdminPanelMixin):
         print("🔑 API ID:", self.api_id)
         print("👑 مالک ربات:", self.owner_id)
         print(f"🏦 خزانه شرط‌بندی: {self.betting_treasury_balance():,} سکه")
-        import asyncio
-        loop = asyncio.new_event_loop()
-        loop.run_until_complete(
-            self.application.bot.delete_webhook(drop_pending_updates=True)
-        )
-        loop.close()
         self.application.run_polling(
             allowed_updates=Update.ALL_TYPES,
             drop_pending_updates=True,
