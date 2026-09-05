@@ -1706,9 +1706,14 @@ class TelegramAuthBot(AdminPanelMixin):
             }
         )
 
-    def save_activated_user(self, user_id, phone, process, session_file):
+    def save_activated_user(self, user_id, phone, process, session_file, *, fallback_pid=None):
         """ثبت نتیجه فعال‌سازی موفق بدون حذف اطلاعات قبلی کاربر."""
-        process_pid = int(getattr(process, "pid", process))
+        if process is not None:
+            process_pid = int(getattr(process, "pid", process))
+        elif fallback_pid is not None:
+            process_pid = int(fallback_pid)
+        else:
+            process_pid = 0
         daily_cost = get_financial_config(USERS_DB)["daily_self_cost"]
         next_billing_at = (
             (datetime.now() + timedelta(days=1)).strftime(
@@ -8218,6 +8223,7 @@ class TelegramAuthBot(AdminPanelMixin):
                     self.save_activated_user(
                         user_id, phone_number, process_info['process'],
                         process_info['session_file'],
+                        fallback_pid=process_info.get('pid'),
                     )
                     self.finish_activation_reservation(
                         reservation["id"], success=True
