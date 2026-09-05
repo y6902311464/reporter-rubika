@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -141,32 +142,25 @@ DEFAULT_SELF_SETTINGS = {
 
 DEFAULT_APP_SETTINGS = {
     "helper_enabled": "0",
-    "bot_display_name": "GardTeam",
-    # The previous hard-coded force-join target is migrated to the channel
-    # requested for this deployment. Administrators can change or disable it
-    # later from /admin without editing the source.
-    "force_join_enabled": "1",
-    "force_join_chat_id": "@gardtem",
-    "force_join_username": "gardtem",
-    "force_join_title": "GardTeam",
-    "force_join_url": "https://t.me/gardtem",
-    # Financial and user-facing values are deliberately stored in the shared
-    # settings table so they can be changed from /admin without editing code.
-    "coin_price_toman": "200",
-    "payment_card_number": "6104337952046736",
-    "payment_card_holder": "",
-    "payment_contact_username": "sinyoremad",
-    "activation_cost_coins": "3",
-    "daily_self_cost_coins": "0",
-    "new_user_gift_coins": "3",
-    "referral_reward_coins": "7",
-    "transfer_min_coins": "1",
-    "transfer_max_coins": "1000",
-    "transfer_daily_limit_coins": "5000",
-    # Percentage deducted from the complete two-player pot. Zero preserves
-    # the historical no-commission behaviour for existing installations.
-    "betting_fee_percent": "0",
-    "support_url": "https://t.me/gardtem",
+    "bot_display_name": os.getenv("BOT_DISPLAY_NAME", "AmirWebCode Self"),
+    "force_join_enabled": os.getenv("FORCE_JOIN_ENABLED", "1"),
+    "force_join_chat_id": os.getenv("FORCE_JOIN_CHAT_ID", "@Amirwebcode1"),
+    "force_join_username": os.getenv("FORCE_JOIN_USERNAME", "Amirwebcode1"),
+    "force_join_title": os.getenv("FORCE_JOIN_TITLE", "AmirWebCode Self"),
+    "force_join_url": os.getenv("FORCE_JOIN_URL", "https://t.me/Amirwebcode1"),
+    "coin_price_toman": os.getenv("COIN_PRICE_TOMAN", "100"),
+    "payment_card_number": os.getenv("PAYMENT_CARD_NUMBER", "6219861453153586"),
+    "payment_card_holder": os.getenv("PAYMENT_CARD_HOLDER", "امیرحسین جواهری"),
+    "payment_contact_username": os.getenv("PAYMENT_CONTACT_USERNAME", "SaEQeHe"),
+    "activation_cost_coins": os.getenv("ACTIVATION_COST_COINS", "1000"),
+    "daily_self_cost_coins": os.getenv("DAILY_SELF_COST_COINS", "0"),
+    "new_user_gift_coins": os.getenv("NEW_USER_GIFT_COINS", "3"),
+    "referral_reward_coins": os.getenv("REFERRAL_REWARD_COINS", "7"),
+    "transfer_min_coins": os.getenv("TRANSFER_MIN_COINS", "1"),
+    "transfer_max_coins": os.getenv("TRANSFER_MAX_COINS", "1000"),
+    "transfer_daily_limit_coins": os.getenv("TRANSFER_DAILY_LIMIT_COINS", "5000"),
+    "betting_fee_percent": os.getenv("BETTING_FEE_PERCENT", "0"),
+    "support_url": os.getenv("SUPPORT_URL", "https://t.me/SaEQeHe"),
     "support_text": (
         "برای ارتباط با پشتیبانی از دکمه زیر استفاده کنید. "
         "پشتیبانی در اولین فرصت پاسخ می‌دهد."
@@ -176,20 +170,14 @@ DEFAULT_APP_SETTINGS = {
         "۲) پیش از پرداخت، تعداد سکه و مبلغ را بررسی کنید.\n"
         "۳) رسید تکراری یا نامعتبر تأیید نمی‌شود."
     ),
-    # Telegram destinations and public identities used by the self-bot are
-    # centralized here. They remain compatible with older installations while
-    # becoming editable from the main bot's /admin panel.
-    "receipt_admin_ids": "",
-    "self_admin_target": "@SAHAND_ADLER",
-    "self_group_target": "@Self_saz_Chat",
-    "self_channel_target": "@COD_MAZ",
-    # Kept under the legacy key so existing installations are migrated without
-    # losing their configured replacement. The value may be either a Telegram
-    # username or arbitrary display text.
-    "brand_powered_by_username": "Sourrce_kade",
-    "brand_owner_username": "sinyouremad",
-    "brand_self_username": "SelfDoppelBot",
-    "brand_group_username": "DoppelGAP",
+    "receipt_admin_ids": os.getenv("RECEIPT_ADMIN_IDS", ""),
+    "self_admin_target": os.getenv("SELF_ADMIN_TARGET", "@SAHAND_ADLER"),
+    "self_group_target": os.getenv("SELF_GROUP_TARGET", "@Self_saz_Chat"),
+    "self_channel_target": os.getenv("SELF_CHANNEL_TARGET", "@COD_MAZ"),
+    "brand_powered_by_username": os.getenv("BRAND_POWERED_BY_USERNAME", "SaEQeHe"),
+    "brand_owner_username": os.getenv("BRAND_OWNER_USERNAME", "SaEQeHe"),
+    "brand_self_username": os.getenv("BRAND_SELF_USERNAME", "AmirWebCode Self"),
+    "brand_group_username": os.getenv("BRAND_GROUP_USERNAME", "https://t.me/+npFqtW9nYX5mNzBl"),
 }
 
 
@@ -416,7 +404,7 @@ def get_brand_config(users_db: str | Path) -> dict[str, str]:
     )
     return {
         "bot_display_name": (
-            settings.get("bot_display_name", "").strip() or "GardTeam"
+            settings.get("bot_display_name", "").strip() or os.getenv("BOT_DISPLAY_NAME", "AmirWebCode Self")
         ),
     }
 
