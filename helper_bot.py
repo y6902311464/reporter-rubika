@@ -4824,7 +4824,10 @@ class HelperPanelBot:
         )
 
     def run(self) -> None:
-        self.application.run_polling(allowed_updates=Update.ALL_TYPES)
+        self.application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,
+        )
 
 
 def parse_arguments():
