@@ -2131,8 +2131,7 @@ class TelegramAuthBot(AdminPanelMixin):
                    WHERE user_id = ?""",
                 (user_id,),
             )
-        self.processes.pop(user_id, None)
-        self.process_meta.pop(user_id, None)
+        self.active_selfbots.pop(user_id, None)
 
 
     async def launch_saved_selfbot(
