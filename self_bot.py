@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from control_store import (
     attach_form_submission_messages,
     clear_form_session,
+    connect as store_connect,
     create_form_submission,
     ensure_self_settings,
     find_auto_reply_candidates,
@@ -27,6 +28,7 @@ from control_store import (
     get_identity_config,
     list_form_templates,
     save_form_session,
+    self_database_path,
     set_runtime_metric,
     set_self_setting,
     update_form_submission_status,
@@ -679,59 +681,55 @@ class TelegramAccount:
     def init_db(self):
         """راه‌اندازی دیتابیس برای اکانت"""
         try:
-            db_file = os.path.join(DATABASE_DIR, f"bot_data_{self.phone.replace('+', '')}.db")
-            conn = db_connect(db_file, timeout=10)
-            cursor = conn.cursor()
+            db_path = self_database_path(DATABASE_DIR, self.phone)
+            with store_connect(str(db_path)) as conn:
+                cursor = conn.cursor()
 
-            cursor.execute('''CREATE TABLE IF NOT EXISTS settings (
-                key TEXT PRIMARY KEY,
-                value TEXT
-            )''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS crash (user_id INTEGER PRIMARY KEY)''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS enemy (user_id INTEGER PRIMARY KEY)''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS secretary (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                pattern TEXT,
-                response TEXT,
-                is_active INTEGER DEFAULT 1
-            )''')
-            cursor.execute('''CREATE TABLE IF NOT EXISTS auto_forward (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                source_channel TEXT,
-                target_group TEXT,
-                is_active INTEGER DEFAULT 1
-            )''')
+                cursor.execute('''CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
+                )''')
+                cursor.execute('''CREATE TABLE IF NOT EXISTS crash (user_id INTEGER PRIMARY KEY)''')
+                cursor.execute('''CREATE TABLE IF NOT EXISTS enemy (user_id INTEGER PRIMARY KEY)''')
+                cursor.execute('''CREATE TABLE IF NOT EXISTS secretary (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    pattern TEXT,
+                    response TEXT,
+                    is_active INTEGER DEFAULT 1
+                )''')
+                cursor.execute('''CREATE TABLE IF NOT EXISTS auto_forward (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_channel TEXT,
+                    target_group TEXT,
+                    is_active INTEGER DEFAULT 1
+                )''')
 
-            default_settings = {
-                "timename": "off", "timebio": "off", "bot": "on", "hashtag": "off", 
-                "bold": "off", "italic": "off", "delete": "off", "code": "off", 
-                "underline": "off", "reverse": "off", "part": "off", "mention": "off", 
-                "comment": "on", "text": "first !", "typing": "off",
-                "voice": "off", "video": "off", "sticker": "off", "font": "1",
-                "original_bio": "", "secretary": "off", "auto_reply": "off",
-                "offline_reply_enabled": "off",
-                "offline_reply_text": (
-                    "سلام 🌹 در حال حاضر آفلاین هستم؛ پیام شما دریافت شد "
-                    "و در اولین فرصت پاسخ می‌دهم."
-                ),
-                "offline_reply_cooldown_minutes": "360",
-                "online_status": "on", "typing_action": "off", "typing_duration": "5",
-                "auto_forward": "off", "save_timed_photos": "on",
-                "friend_affection_reply": "on",
-                "enemy_hostile_reply": "on",
-                "scheduled_message_enabled": "off",
-                "scheduled_message_target": "",
-                "scheduled_message_text": "",
-                "scheduled_message_interval_minutes": "5"
-            }
-            
-            for k, v in default_settings.items():
-                cursor.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (k, v))
+                default_settings = {
+                    "timename": "off", "timebio": "off", "bot": "on", "hashtag": "off", 
+                    "bold": "off", "italic": "off", "delete": "off", "code": "off", 
+                    "underline": "off", "reverse": "off", "part": "off", "mention": "off", 
+                    "comment": "on", "text": "first !", "typing": "off",
+                    "voice": "off", "video": "off", "sticker": "off", "font": "1",
+                    "original_bio": "", "secretary": "off", "auto_reply": "off",
+                    "offline_reply_enabled": "off",
+                    "offline_reply_text": (
+                        "سلام 🌹 در حال حاضر آفلاین هستم؛ پیام شما دریافت شد "
+                        "و در اولین فرصت پاسخ می‌دهم."
+                    ),
+                    "offline_reply_cooldown_minutes": "360",
+                    "online_status": "on", "typing_action": "off", "typing_duration": "5",
+                    "auto_forward": "off", "save_timed_photos": "on",
+                    "friend_affection_reply": "on",
+                    "enemy_hostile_reply": "on",
+                    "scheduled_message_enabled": "off",
+                    "scheduled_message_target": "",
+                    "scheduled_message_text": "",
+                    "scheduled_message_interval_minutes": "5"
+                }
+                
+                for k, v in default_settings.items():
+                    cursor.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (k, v))
 
-            conn.commit()
-            conn.close()
-            # Create/migrate the v2.3 tables and settings while preserving all
-            # rows from earlier releases.
             ensure_self_settings(DATABASE_DIR, self.phone)
             print(f"✅ دیتابیس برای {self.phone} راه‌اندازی شد")
         except Exception as e:
@@ -2167,12 +2165,11 @@ class TelegramAccount:
     async def load_secretary_messages(self):
         """بارگذاری پیام‌های منشی از دیتابیس"""
         try:
-            db = os.path.join(DATABASE_DIR, f"bot_data_{self.phone.replace('+', '')}.db")
-            conn = db_connect(db, timeout=10)
-            cursor = conn.cursor()
-            cursor.execute('SELECT pattern, response FROM secretary WHERE is_active = 1')
-            results = cursor.fetchall()
-            conn.close()
+            db_path = self_database_path(DATABASE_DIR, self.phone)
+            with store_connect(str(db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT pattern, response FROM secretary WHERE is_active = 1')
+                results = cursor.fetchall()
             
             self.secretary_messages = {}
             for pattern, response in results:
@@ -2186,12 +2183,11 @@ class TelegramAccount:
     async def load_auto_forward_settings(self):
         """بارگذاری تنظیمات فوروارد خودکار"""
         try:
-            db = os.path.join(DATABASE_DIR, f"bot_data_{self.phone.replace('+', '')}.db")
-            conn = db_connect(db, timeout=10)
-            cursor = conn.cursor()
-            cursor.execute('SELECT source_channel, target_group FROM auto_forward WHERE is_active = 1')
-            results = cursor.fetchall()
-            conn.close()
+            db_path = self_database_path(DATABASE_DIR, self.phone)
+            with store_connect(str(db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT source_channel, target_group FROM auto_forward WHERE is_active = 1')
+                results = cursor.fetchall()
             
             self.auto_forward_settings = {}
             for source, target in results:
@@ -2815,17 +2811,15 @@ class TelegramAccount:
                 pattern = event.pattern_match.group(1).strip().lower()
                 response = event.pattern_match.group(2).strip()
                 
-                db = os.path.join(DATABASE_DIR, f"bot_data_{self.phone.replace('+', '')}.db")
-                conn = db_connect(db, timeout=10)
-                cursor = conn.cursor()
-                cursor.execute('INSERT INTO secretary (pattern, response) VALUES (?, ?)', (pattern, response))
-                cursor.execute(
-                    """INSERT INTO settings (key, value)
-                       VALUES ('auto_reply', 'on')
-                       ON CONFLICT(key) DO UPDATE SET value = 'on'"""
-                )
-                conn.commit()
-                conn.close()
+                db_path = self_database_path(DATABASE_DIR, self.phone)
+                with store_connect(str(db_path)) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('INSERT INTO secretary (pattern, response) VALUES (?, ?)', (pattern, response))
+                    cursor.execute(
+                        """INSERT INTO settings (key, value)
+                           VALUES ('auto_reply', 'on')
+                           ON CONFLICT(key) DO UPDATE SET value = 'on'"""
+                    )
                 
                 self.secretary_messages[pattern] = response
                 await event.reply(
@@ -2848,6 +2842,9 @@ class TelegramAccount:
     async def update_profile_time(self):
         """Apply or restore the name/bio clock once without blocking commands."""
         js = self.get_data()
+        if not js:
+            print(f"⚠️ get_data() خالی برگشت برای {self.phone}")
+            return
         current_time = time.time()
         clock_enabled = (
             js.get("timename") == "on" or js.get("timebio") == "on"
@@ -2978,19 +2975,21 @@ class TelegramAccount:
             )
         self.last_time_update = current_time
     
+    def _safe_phone(self):
+        return self.phone.replace('+', '').strip()
+
     def get_data(self):
         """خواندن داده‌ها از دیتابیس"""
         try:
-            db = os.path.join(DATABASE_DIR, f"bot_data_{self.phone.replace('+', '')}.db")
-            conn = db_connect(db, timeout=10)
-            cur = conn.cursor()
-            cur.execute('SELECT key, value FROM settings')
-            settings = {k: v for k, v in cur.fetchall()}
-            cur.execute('SELECT user_id FROM crash')
-            settings['crash'] = [r[0] for r in cur.fetchall()]
-            cur.execute('SELECT user_id FROM enemy')
-            settings['enemy'] = [r[0] for r in cur.fetchall()]
-            conn.close()
+            db_path = self_database_path(DATABASE_DIR, self.phone)
+            with store_connect(str(db_path)) as conn:
+                cur = conn.cursor()
+                cur.execute('SELECT key, value FROM settings')
+                settings = {row[0]: row[1] for row in cur.fetchall()}
+                cur.execute('SELECT user_id FROM crash')
+                settings['crash'] = [r[0] for r in cur.fetchall()]
+                cur.execute('SELECT user_id FROM enemy')
+                settings['enemy'] = [r[0] for r in cur.fetchall()]
             return settings
         except Exception as e:
             print(f"خطا در خواندن داده‌ها برای {self.phone}: {e}")
@@ -2999,20 +2998,18 @@ class TelegramAccount:
     def put_data(self, data):
         """نوشتن داده‌ها به دیتابیس"""
         try:
-            db = os.path.join(DATABASE_DIR, f"bot_data_{self.phone.replace('+', '')}.db")
-            conn = db_connect(db, timeout=10)
-            cur = conn.cursor()
-            for k, v in data.items():
-                if k not in ['crash', 'enemy']:
-                    cur.execute('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', (k, v))
-            if 'crash' in data:
-                cur.execute('DELETE FROM crash')
-                cur.executemany('INSERT INTO crash(user_id) VALUES (?)', [(u,) for u in data['crash']])
-            if 'enemy' in data:
-                cur.execute('DELETE FROM enemy')
-                cur.executemany('INSERT INTO enemy(user_id) VALUES (?)', [(u,) for u in data['enemy']])
-            conn.commit()
-            conn.close()
+            db_path = self_database_path(DATABASE_DIR, self.phone)
+            with store_connect(str(db_path)) as conn:
+                cur = conn.cursor()
+                for k, v in data.items():
+                    if k not in ['crash', 'enemy']:
+                        cur.execute('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)', (k, v))
+                if 'crash' in data:
+                    cur.execute('DELETE FROM crash')
+                    cur.executemany('INSERT INTO crash(user_id) VALUES (?)', [(u,) for u in data['crash']])
+                if 'enemy' in data:
+                    cur.execute('DELETE FROM enemy')
+                    cur.executemany('INSERT INTO enemy(user_id) VALUES (?)', [(u,) for u in data['enemy']])
         except Exception as e:
             print(f"خطا در نوشتن داده‌ها برای {self.phone}: {e}")
     
