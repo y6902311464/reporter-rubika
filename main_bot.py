@@ -1946,6 +1946,38 @@ class TelegramAuthBot(AdminPanelMixin):
             )
         )
 
+    def record_selfbot_failure(
+        self,
+        user_id: int,
+        detail: str,
+        *,
+        permanent: bool = False,
+    ) -> None:
+        user_id = int(user_id)
+        values: dict = {
+            "self_last_error": str(detail or "")[:500],
+            "self_last_stopped_at": datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            "self_next_restart_at": None,
+        }
+        if permanent:
+            values["self_status"] = "invalid_session"
+            values["self_enabled"] = 0
+            values["self_consecutive_failures"] = 0
+            self.active_selfbots.pop(user_id, None)
+        else:
+            record = self.get_selfbot_record(user_id)
+            failures = int(
+                (record["self_consecutive_failures"] or 0) if record else 0
+            ) + 1
+            values["self_status"] = "error"
+            values["self_consecutive_failures"] = failures
+            if failures >= 5:
+                values["self_enabled"] = 0
+                values["self_status"] = "activation_failed"
+        self.update_selfbot_runtime(user_id, **values)
+
     def adopt_running_selfbot(self, record, pid: int) -> None:
         user_id = int(record["user_id"])
         session_file = self.selfbot_session_path(
