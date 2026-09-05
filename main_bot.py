@@ -2198,10 +2198,20 @@ class TelegramAuthBot(AdminPanelMixin):
             child_env["TELEGRAM_API_ID"] = str(self.api_id)
             child_env["TELEGRAM_API_HASH"] = self.api_hash
             child_env["BOT_DATA_DIR"] = str(DATA_DIR)
+            selfbot_log_dir = SESSIONS_DIR / "logs"
+            selfbot_log_dir.mkdir(parents=True, exist_ok=True)
+            selfbot_log_file = selfbot_log_dir / f"selfbot_{user_id}.log"
             try:
+                log_fd = os.open(
+                    str(selfbot_log_file),
+                    os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+                    0o600,
+                )
+                log_stream = os.fdopen(log_fd, "w", encoding="utf-8", errors="replace")
                 process = subprocess.Popen(
                     [
                         sys.executable,
+                        "-u",
                         str(SELF_BOT_SCRIPT),
                         "--phone",
                         str(record["phone"]),
@@ -2212,6 +2222,8 @@ class TelegramAuthBot(AdminPanelMixin):
                     ],
                     cwd=str(BASE_DIR),
                     env=child_env,
+                    stdout=log_stream,
+                    stderr=subprocess.STDOUT,
                     start_new_session=True,
                 )
             except Exception as exc:
@@ -2298,6 +2310,16 @@ class TelegramAuthBot(AdminPanelMixin):
                     await asyncio.to_thread(process.wait, 5)
                 except subprocess.TimeoutExpired:
                     process.kill()
+            log_tail = ""
+            try:
+                if selfbot_log_file.is_file():
+                    log_tail = selfbot_log_file.read_text(
+                        encoding="utf-8", errors="replace"
+                    )[-2000:]
+            except Exception:
+                pass
+            if log_tail:
+                detail = f"{detail}\n── لاگ زیر-پروسه ──\n{log_tail}"
             self.active_selfbots.pop(user_id, None)
             permanent = self.permanent_selfbot_failure(detail)
             self.record_selfbot_failure(
@@ -10477,7 +10499,16 @@ class TelegramAuthBot(AdminPanelMixin):
         print("🔑 API ID:", self.api_id)
         print("👑 مالک ربات:", self.owner_id)
         print(f"🏦 خزانه شرط‌بندی: {self.betting_treasury_balance():,} سکه")
-        self.application.run_polling(allowed_updates=Update.ALL_TYPES)
+        import asyncio
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(
+            self.application.bot.delete_webhook(drop_pending_updates=True)
+        )
+        loop.close()
+        self.application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True,
+        )
 
 # تنظیمات اصلی
 if __name__ == "__main__":
