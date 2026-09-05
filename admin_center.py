@@ -347,7 +347,8 @@ class AdminCenterStore:
                        VALUES (?, ?, ?, ?, ?, 1, ?, ?)""",
                     [
                         ("آزمایشی", 3, 0, 3, feature_json, now, now),
-                        ("ماهانه", 30, 0, 0, feature_json, now, now),
+                        ("هفتگی", 7, 1000, 0, feature_json, now, now),
+                        ("ماهانه", 30, 5000, 0, feature_json, now, now),
                         ("دائمی", 0, 0, 0, feature_json, now, now),
                     ],
                 )
