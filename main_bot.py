@@ -317,7 +317,7 @@ IDENTITY_SETTING_FIELDS = {
         "prompt": (
             "متن یا آیدی جدیدی را بفرستید که در تمام بخش‌های "
             "Powered by به‌جای Sourcekade نمایش داده شود.\n"
-            "نمونه: @GardTeam یا تیم گارد"
+            "نمونه: @AmirWebCode یا امیرکد"
         ),
     },
     "brand_owner_username": {
