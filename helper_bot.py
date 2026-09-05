@@ -259,6 +259,7 @@ class HelperPanelBot:
                 "helper_username": helper_user.username,
                 "helper_bot_id": helper_user.id,
                 "helper_pid": os.getpid(),
+                "helper_enabled": "1",
             },
         )
         write_runtime_status(
