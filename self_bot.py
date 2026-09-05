@@ -143,11 +143,12 @@ async def send_to_group(client, message, phone=None):
         print(f"خطا در ارسال به گروه: {e}")
 
 class TelegramAccount:
-    def __init__(self, phone, session_string, account_manager, status_file=None):
+    def __init__(self, phone, session_string, account_manager, status_file=None, session_file_path=None):
         self.phone = phone
         self.session_string = session_string
         self.account_manager = account_manager
         self.status_file = status_file
+        self._session_file_path = session_file_path
         self.client = None
         self.owner_id = None
         self.is_running = False
@@ -278,41 +279,69 @@ class TelegramAccount:
         sender_username = str(getattr(sender, "username", "") or "").lower()
         return sender_username == target.lstrip("@").lower()
         
+    def _destroy_stale_session(self):
+        """حذف فایل سشن وقتی DC migration گیر کرده."""
+        session_path = getattr(self, "_session_file_path", None)
+        if session_path:
+            try:
+                from pathlib import Path as _P
+                p = _P(session_path)
+                if p.is_file():
+                    p.unlink(missing_ok=True)
+                    print(f"🗑️ فایل سشن قدیمی (DC migration ناموفق) حذف شد: {p}")
+            except Exception as exc:
+                print(f"⚠️ خطا در حذف فایل سشن: {exc}")
+
     async def safe_initialize_client(self):
-        """اتصال ایمن با مدیریت خطا"""
+        """اتصال ایمن با مدیریت خطا و محافظت در برابر DC migration hang"""
         self.last_startup_error = ""
         try:
             print(f"🔄 در حال راه‌اندازی اکانت {self.phone}...")
-            
+
             # ایجاد کلاینت با تنظیمات ضد فریز
             self.client = TelegramClient(
-                StringSession(self.session_string), 
-                API_ID, 
+                StringSession(self.session_string),
+                API_ID,
                 API_HASH,
                 device_model="iPhone 15 Pro",
                 system_version="iOS 17.1",
                 app_version="10.0.0",
                 lang_code="fa",
                 system_lang_code="fa",
-                connection_retries=10,
-                request_retries=5,
-                auto_reconnect=True,
+                connection_retries=3,
+                request_retries=3,
+                auto_reconnect=False,
                 flood_sleep_threshold=120,
                 base_logger=None,
             )
-            
-            # اتصال با timeout
-            await asyncio.wait_for(self.client.connect(), timeout=30)
-            
+
+            # اتصال اولیه با timeout
+            try:
+                await asyncio.wait_for(self.client.connect(), timeout=30)
+            except asyncio.TimeoutError:
+                self.last_startup_error = "مهلت اتصال اولیه تمام شد"
+                print(f"⏰ timeout اتصال اولیه برای {self.phone}")
+                try:
+                    await self.client.disconnect()
+                except Exception:
+                    pass
+                return False
+
             if not await self.client.is_user_authorized():
                 self.last_startup_error = (
                     "سشن تلگرام نامعتبر یا باطل شده است"
                 )
                 print(f"❌ سشن برای {self.phone} نامعتبر است")
+                try:
+                    await self.client.disconnect()
+                except Exception:
+                    pass
+                self._destroy_stale_session()
                 return False
-                
+
+            # get_me ممکن است DC migration را فعال کند و هنگ کند
             try:
-                me = await asyncio.wait_for(self.client.get_me(), timeout=10)
+                me = await asyncio.wait_for(self.client.get_me(), timeout=20)
                 if me:
                     self.owner_id = me.id
                     self.connection_retries = 0
@@ -325,20 +354,32 @@ class TelegramAccount:
                     )
                     print(f"❌ دریافت اطلاعات کاربر برای {self.phone} ناموفق بود")
                     return False
-                    
+
             except asyncio.TimeoutError:
                 self.last_startup_error = (
-                    "مهلت دریافت اطلاعات حساب تلگرام تمام شد"
+                    "مهلت دریافت اطلاعات حساب تمام شد - احتمالا DC migration گیر کرده"
                 )
-                print(f"⏰ timeout دریافت اطلاعات کاربر برای {self.phone}")
+                print(f"⏰ timeout get_me برای {self.phone} - احتمال DC migration hang")
+                try:
+                    await self.client.disconnect()
+                except Exception:
+                    pass
+                self._destroy_stale_session()
                 return False
             except Exception as e:
+                err_str = str(e).lower()
                 self.last_startup_error = (
                     f"خطا در دریافت اطلاعات حساب تلگرام: {e}"
                 )
                 print(f"❌ خطا در دریافت اطلاعات کاربر {self.phone}: {e}")
+                try:
+                    await self.client.disconnect()
+                except Exception:
+                    pass
+                if "migrat" in err_str:
+                    self._destroy_stale_session()
                 return False
-                
+
         except asyncio.TimeoutError:
             self.last_startup_error = "مهلت اتصال به تلگرام تمام شد"
             print(f"⏰ timeout اتصال برای {self.phone}")
@@ -3214,6 +3255,7 @@ async def main():
         session_string,
         account_manager,
         status_file=args.status_file,
+        session_file_path=session_path,
     )
     await account.run()
 
