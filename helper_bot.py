@@ -506,11 +506,95 @@ class HelperPanelBot:
                 "تنظیم نیمه‌کاره‌ای وجود ندارد."
             )
 
+    async def _handle_direct_panel(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        owner_id = update.effective_user.id
+        record = self.user_record(owner_id)
+        if not record:
+            await update.effective_message.reply_text(
+                "❌ سلف فعالی برای این حساب پیدا نشد.\n"
+                "ابتدا سلف را از ربات اصلی فعال کنید."
+            )
+            return
+        record = dict(record)
+        record["panel_first_name"] = update.effective_user.first_name or ""
+        record["panel_last_name"] = update.effective_user.last_name or ""
+        record["panel_username"] = update.effective_user.username or ""
+        text, keyboard = self.build_page(owner_id, record, "home")
+        await update.effective_message.reply_text(
+            render_panel_html(text),
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
+
+    async def _handle_direct_status(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        owner_id = update.effective_user.id
+        record = self.user_record(owner_id)
+        if not record:
+            await update.effective_message.reply_text(
+                "❌ سلف فعالی برای این حساب پیدا نشد."
+            )
+            return
+        record = dict(record)
+        record["panel_first_name"] = update.effective_user.first_name or ""
+        record["panel_last_name"] = update.effective_user.last_name or ""
+        record["panel_username"] = update.effective_user.username or ""
+        text, keyboard = self.build_page(owner_id, record, "status")
+        await update.effective_message.reply_text(
+            render_panel_html(text),
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
+
+    async def _handle_direct_guide(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        owner_id = update.effective_user.id
+        record = self.user_record(owner_id)
+        if not record:
+            await update.effective_message.reply_text(
+                "❌ سلف فعالی برای این حساب پیدا نشد."
+            )
+            return
+        record = dict(record)
+        record["panel_first_name"] = update.effective_user.first_name or ""
+        record["panel_last_name"] = update.effective_user.last_name or ""
+        record["panel_username"] = update.effective_user.username or ""
+        text, keyboard = self.build_page(owner_id, record, "guide")
+        await update.effective_message.reply_text(
+            render_panel_html(text),
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
+
     async def receive_schedule_input(
         self,
         update: Update,
         context: ContextTypes.DEFAULT_TYPE,
     ) -> None:
+        raw_text = (update.effective_message.text or "").strip()
+
+        if raw_text and not context.user_data.get("panel_input"):
+            low = raw_text.lower()
+            if low in {"پنل", "panel", "menu", "منو", ".پنل", ".panel"}:
+                await self._handle_direct_panel(update, context)
+                return
+            if low in {"وضعیت", "status", ".وضعیت", ".status"}:
+                await self._handle_direct_status(update, context)
+                return
+            if low in {"راهنما", "help", "guide", ".راهنما", ".help"}:
+                await self._handle_direct_guide(update, context)
+                return
+
         pending = (
             context.user_data.get("panel_input")
             or context.user_data.get("schedule_input")
